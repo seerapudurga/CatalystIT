@@ -51,25 +51,34 @@ function csvToArray($filename){
 }
 
 function OpenCon($db_username,$db_password,$db_host)
-	 {
-		 $conn = new mysqli("localhost", "root", "")or die("Connect failed: %s\n". $conn -> error);
-		// $conn = new mysqli($db_host, $db_username, $db_password)or die("Connect failed: %s\n". $conn -> error);
-		return $conn;
-	 }
-	 function selectDB($conn){
-		$db_selected = $conn->select_db('my_db');
-		print_r($db_selected);
-		if (!$db_selected) {
-		  $sql = 'CREATE DATABASE my_db';
-		
-		  if ($conn->query($sql)) {
-			  echo "Database my_db created successfully\n";
-		  } else {
-			  echo 'Error creating database: ' . $conn->error . "\n";
-		  }
-		}
-		return $conn;
+ {
+	$mysqli = mysqli_init();
+	if (!$mysqli) {
+		die('mysqli_init failed');
 	}
+	if (!$mysqli->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5)) {
+		die('Setting MYSQLI_OPT_CONNECT_TIMEOUT failed');
+	}
+	if (!$mysqli->real_connect($db_host, $db_username, $db_password)) {
+		die('Connect Error (' . mysqli_connect_errno() . ') '
+			. mysqli_connect_error());
+	}else
+		return $mysqli;
+ }
+ 
+ function selectDB($conn){
+	$db_selected = $conn->select_db('my_db');
+	if (!$db_selected) {
+	  $sql = 'CREATE DATABASE my_db';
+	
+	  if ($conn->query($sql)) {
+		  echo "Database my_db created successfully\n";
+	  } else {
+		  echo 'Error creating database: ' . $conn -> error . "\n";
+	  }
+	}
+	return $conn;
+}
 function create_table(){
 	echo "Database Username:";
 	$db_username = rtrim(fgets(STDIN));
@@ -78,9 +87,11 @@ function create_table(){
 	echo "Database Hostname:";
 	$db_host = rtrim(fgets(STDIN));
 	$conn = OpenCon($db_username,$db_password,$db_host);
-	$conn = selectDB($conn);
-var_dump($conn);
-	$sql = "CREATE TABLE MyGuestsu (
+	
+	
+	if(empty($conn->connect_error)){
+		$conn = selectDB($conn);
+		$sql = "CREATE TABLE MyGuestu (
 			id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			firstname VARCHAR(30) NOT NULL,
 			lastname VARCHAR(30) NOT NULL,
@@ -93,6 +104,9 @@ var_dump($conn);
 		} else {
 		  echo "Error creating table: " . $conn->error;
 		}
+	}else {
+		  echo 'Error Connecting to database: ' . $conn->connect_error . "\n";
+	  }
 
 }
 
@@ -123,25 +137,5 @@ $connection = [];
 	  default:
 		echo "--default";
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ?>

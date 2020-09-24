@@ -1,19 +1,40 @@
 <?php
 
-function dataChecking($data){
+function insertData($conn, $records){
 
-	foreach($data as $record){
-		
-		print_r(ucfirst(strtolower($record['name'])));
-		print_r(ucfirst(strtolower($record['surname'])));
-		print_r(strtolower($record['email']));	
-		if (!filter_var($record['email'], FILTER_VALIDATE_EMAIL)) {
-			$emailErr = "Invalid email format";
-			break;
+	foreach($records as $record){
+		$name = $conn->real_escape_string($record['name']);
+		$surname = $conn->real_escape_string($record['surname']);
+		$sql = "INSERT INTO guess (name, surname, email)
+		VALUES ('$name', '$surname', '$record[email]')";
+
+		if ($conn->query($sql) === TRUE) {
+		  continue;
+		} else {
+		  echo "Error: " . $sql . "<br>" . $conn->error;
 		}
 	}
-		
+}
 
+function dataChecking($data){
+
+	$valid_records = [];
+	$emailErr = false;
+	foreach($data as $record){
+			
+		$record['name'] = ucfirst(strtolower(trim($record['name'])));
+		$record['surname'] = ucfirst(strtolower(trim($record['surname'])));
+		$record['email'] = strtolower(trim($record['email']));
+		$x = $record['email'];
+		if ((!preg_match("/^([a-z0-9\+_\-]+)(\.[a-z0-9\+_\-]+)*@([a-z0-9\-]+\.)+[a-z]{2,6}$/ix", $x))) {
+			$emailErr = "Invalid email format:  ".$record['email'];
+			break;
+		}else{
+			$valid_records[] = $record;
+		}
+	}
+	return array('valid_records'=>$valid_records,'emailErr'=>$emailErr);
+	print_r($valid_records);
 }
 
 function csvToArray($filename){
@@ -38,14 +59,17 @@ function csvToArray($filename){
 					echo "Error: unexpected fgets() fail\n";
 				}
 				//print_r($array);
-				return $array;
+				$validation_result = dataChecking($array);
+				return $validation_result;
 				fclose($handle);
 			}else 
 				throw new Exception("Could not open the file!");
 		}
 		catch (Exception $e) {
 			echo "Error (File: ".$e->getFile().", line ".
-				  $e->getLine()."): ".$e->getMessage();
+				  $e->getLine()."): \n".$e->getMessage();
+				  
+			return false;
 		}
 
 }
@@ -91,22 +115,44 @@ function create_table(){
 	
 	if(empty($conn->connect_error)){
 		$conn = selectDB($conn);
-		$sql = "CREATE TABLE MyGuestu (
+		$sql = "CREATE TABLE IF NOT EXISTS `guess` (
 			id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			firstname VARCHAR(30) NOT NULL,
-			lastname VARCHAR(30) NOT NULL,
+			name VARCHAR(30) NOT NULL,
+			surname VARCHAR(30) NOT NULL,
 			email VARCHAR(50),
 			reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 		)";
 
-		if ($conn->query($sql)) {
-		  echo "Table MyGuests created successfully";
-		} else {
+		if ($conn->error) {
 		  echo "Error creating table: " . $conn->error;
 		}
+		return $conn;
 	}else {
 		  echo 'Error Connecting to database: ' . $conn->connect_error . "\n";
 	  }
+
+}
+
+function helpPrint()
+{
+	/*$help_data = Array(
+		'--file' = > 'Name of the CSV to be parsed',
+		'--create_table' = > 'Creates MySql table',
+		'--dry_run' = > 'Run with --file directive to run the script but not insert into the DB',
+		'--help' = > 'Help',
+		'-u' = > 'MySql username',
+		'-p' = > 'MySql password',
+		'-h' = > 'MySql host'
+		);
+*/
+		
+	echo "\n"."--file [csv filename] \t Name of the CSV to be parsed";
+	echo "\n"."--create_table \t\t Creates MySql table";
+	echo "\n"."--dry_run \t\t Run with --file directive (--dry_run --file [csv filename])";
+	echo "\n"."-u \t\t\t This MySQL username";
+	echo "\n"."-p \t\t\t MySQL password";
+	echo "\n"."-h \t\t\t MySQL host";
+	echo "\n"."--help \t\t\t help";
 
 }
 
@@ -114,28 +160,38 @@ function create_table(){
 
 unset($argv[0]);
 
-var_dump($argv);
 $connection = [];
 	switch ($argv[1]) {
 	  case "--file":
-		//echo "--file";
-		csvToArray($argv[2]);
+		$result_arr = csvToArray($argv[2]);
+		if($result_arr){
+			$conn = create_table();
+			if($conn->error == ""){
+				$data = insertData($conn, $result_arr['valid_records']);
+			}else{
+				echo "Error: ".$conn->error;
+			}
+		}
 		break;
 	  case "--create_table":
-		//echo "--create_table";
-		create_table();
+		$conn = create_table();
 		break;
 	  case "--dry_run":
-		echo "--dry_run";
+		$result_arr = csvToArray($argv[3]);
+		if($result_arr['emailErr']){
+			echo $result_arr['emailErr'];
+		}else{
+			echo "Records are validated. No errors found";
+		}
 		break;
 	  case "-u":
 		echo "--u";
 		break;
 	  case "--help":
-		echo "--help";
+		helpPrint();
 		break;
 	  default:
-		echo "--default";
+		helpPrint();
 	}
 
 ?>

@@ -64,13 +64,15 @@ function csvToArray($filename){
 				fclose($handle);
 			}else 
 				throw new Exception("Could not open the file!");
+				
 		}
 		catch (Exception $e) {
 			echo "Error (File: ".$e->getFile().", line ".
 				  $e->getLine()."): \n".$e->getMessage();
 				  
-			return false;
+			
 		}
+		return array('error'=>$e->getMessage());
 
 }
 
@@ -178,7 +180,10 @@ $connection = [];
 		break;
 	  case "--dry_run":
 		$result_arr = csvToArray($argv[3]);
-		if($result_arr['emailErr']){
+		if(array_key_exists('error', $result_arr)){
+			echo "\nError While processing file: ".$result_arr['error'];
+		}
+		else if($result_arr['emailErr']){
 			echo $result_arr['emailErr'];
 		}else{
 			echo "Records are validated. No errors found";
@@ -193,5 +198,7 @@ $connection = [];
 	  default:
 		helpPrint();
 	}
+
+
 
 ?>

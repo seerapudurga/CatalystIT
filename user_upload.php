@@ -25,9 +25,9 @@ function OpenCon($db_username,$db_password,$db_host)
  
  //Checking if Database Exists. If not Creating a new DB called Users .
  function selectDB($conn){
-	$db_selected = $conn->select_db('catalyst_user');
-	if (!$db_selected) {
-	  $sql = 'CREATE DATABASE catalyst_user';
+	$db_selected = $conn->select_db('catalyst_user'); //Selecting Database
+	if (!$db_selected) { 	//If not existed
+	  $sql = 'CREATE DATABASE catalyst_user'; 	//Create Database command
 	
 	  if ($conn->query($sql)) {
 		  echo "Database created successfully\n";
@@ -38,17 +38,22 @@ function OpenCon($db_username,$db_password,$db_host)
 	return $conn;
 }
 function create_table(){
+
+	//Reading Database username, Password and Hostname.
 	echo "Database Username:";
 	$db_username = rtrim(fgets(STDIN));
 	echo "Database Password:";
 	$db_password = rtrim(fgets(STDIN));
 	echo "Database Hostname:";
 	$db_host = rtrim(fgets(STDIN));
-	$conn = OpenCon($db_username,$db_password,$db_host);
 	
+	//Calling function to establish database connection
+	$conn = OpenCon($db_username,$db_password,$db_host); 
 	
 	if(empty($conn->connect_error)){
 		$conn = selectDB($conn);
+		
+		//Create table statement
 		$sql = "CREATE TABLE IF NOT EXISTS `users` (
 			id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			name VARCHAR(30) NOT NULL,
@@ -69,14 +74,15 @@ function create_table(){
 
 }
 
-
+///Inserting recors in to Database
 function insertData($conn, $records){
 
 	$dbrecord = [];
 	$i=0;
 	foreach($records as $record){
-		$name = $conn->real_escape_string($record['name']);
+		$name = $conn->real_escape_string($record['name']);  
 		$surname = $conn->real_escape_string($record['surname']);
+		//Insert statement to insert records in to Database
 		$sql = "INSERT INTO users (name, surname, email)
 		VALUES ('$name', '$surname', '$record[email]')";
 
@@ -91,6 +97,13 @@ function insertData($conn, $records){
 	return $dbrecord;
 }
 
+
+/****Data Validation.
+	*Capitalising Name and Surname
+	*validating the email format
+	*Push the valid records in to an array
+	*If an error is found, return the valid records and the error message.
+*/
 function dataChecking($data){
 
 	$valid_records = [];
@@ -110,6 +123,9 @@ function dataChecking($data){
 	return array('valid_records'=>$valid_records,'error'=>$emailErr);
 }
 
+
+
+/****  		Function to COnvert CSV file to Array  ****/
 function csvToArray($filename){
 
 	$array = $fields = array(); $i = 0;
@@ -149,7 +165,7 @@ function csvToArray($filename){
 
 }
 
-
+/***		Function to print the list of directives		***/
 function helpPrint()
 {
 
@@ -162,10 +178,13 @@ function helpPrint()
 	echo "\n"."--help \t\t\t help";
 
 }
-function filedirective($filename){
+
+/*****		File Directive Command FUnctions		*****/
+function fileDirective($filename){
 	$result_arr = csvToArray($filename);
 	
-		
+		/**	After converting CSV to array and validation, inserting the valid records in to Database.
+		**/
 		if(count($result_arr['valid_records'])>0){
 			$conn = create_table();
 			if($conn->error == ""){
@@ -188,6 +207,7 @@ function filedirective($filename){
 		
 }
 
+/****			dry_run directive command functionality		****/
 function dryRun($filename){
 	$result_arr = csvToArray($filename);
 		if(array_key_exists('error', $result_arr)){
@@ -203,7 +223,7 @@ function dryRun($filename){
 	switch ($argv[1]) {
 	
 	  case "--file":
-		filedirective($argv[2]);
+		fileDirective($argv[2]);
 		break;
 		
 	  case "--create_table":

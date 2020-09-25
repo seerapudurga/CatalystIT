@@ -136,7 +136,11 @@ function csvToArray($filename){
 				while (($row = fgetcsv($handle, 4096)) !== false) {
 					if (empty($fields)) {
 						$fields = $row;
+						//print_r($fields);
 						$fields = array_map('trim', $fields);
+						if(count(array_intersect($fields, ['name','surname','email'])) < 3){
+							throw new Exception("Input the correct file!");
+						}
 						continue;
 					}
 					foreach ($row as $k=>$value) {
